@@ -179,8 +179,8 @@ jobs:
 
       - name: Configure Git
         run: |
-          git config --global user.name "Numbersf"
-          git config --global user.email "263623064@qq.com"
+          git config --global user.name "Luffy-456"
+          git config --global user.email "anshuman567.in@gmail.com"
 
       - name: Configure APTC
         run: |
