@@ -1,5 +1,5 @@
-# Official Nord 4 Kerenel Source
-[OnePlusOSS](https://github.com/OnePlusOSS/kernel_manifest)
+# Official Nord 4 Kerenel Source Manifest
+[OnePlusOSS](https://github.com/OnePlusOSS/kernel_manifest/tree/oneplus/sm7675)
 ------
 # Requirement:
 
