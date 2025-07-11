@@ -1,8 +1,8 @@
 # Official Nord 4 Kerenel Source
 [OnePlusOSS](https://github.com/OnePlusOSS/kernel_manifest)
-
-# Requirement:
 ------
+# Requirement:
+
 * Bootloader Unlocked
 
 * 6.1.75 Kernel based
@@ -26,9 +26,9 @@
 
 ------
 
-
-# How TO :
 ------
+# How TO :
+
 ### Flash Kernel :
 
 * Use [Kernel Flasher](https://github.com/fatalcoder524/KernelFlasher)
