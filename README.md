@@ -13,6 +13,7 @@
 ## Required Modules
 
 * [Susfs for KernelSU](https://github.com/sidex15/ksu_module_susfs)
+* If you want to ZRAM download the module form the repective kernel release section **Must Read Caution**
 
 ------
 > [!CAUTION]
@@ -70,13 +71,7 @@ This ensures a smooth update process without losing root or kernel modifications
 
 ## Features
 
-Features:  
-[+] SukiSU Ultra 
-[+] SUSFS CI
-[+] VFS HOOK  
-[+] Magic Mount Support KPM 
-[+] BBR Support
-[+] ZRAM
+<pre> ✅ SukiSU Ultra - ✅ SUSFS CI - ✅ VFS HOOK - ✅ Magic Mount Support (KPM) - ✅ BBR Support - ✅ ZRAM </pre>
 
 
 # Thanks to :
