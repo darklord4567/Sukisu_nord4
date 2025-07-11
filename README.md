@@ -13,7 +13,7 @@
 ## Required Modules
 
 * [Susfs for KernelSU](https://github.com/sidex15/ksu_module_susfs)
-* If you want to ZRAM download the module form the repective kernel release section **Must Read Caution**
+* If you want to use ZRAM download the module form the repective kernel release section **Must Read Caution**
 
 ------
 > [!CAUTION]
