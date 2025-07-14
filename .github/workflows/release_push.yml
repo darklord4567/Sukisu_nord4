@@ -27,60 +27,57 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Download Build Artifacts
-        uses: dawidd6/action-download-artifact@v6
-        with:
-          workflow: build-kernel.yml
-          run_id: ${{ inputs.run_id }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          path: ./release-artifacts
-
-      - name: Display Downloaded Files
-        run: ls -R ./release-artifacts
-
       - name: Generate IST Release Tag
         run: |
-          TAG="${{ inputs.device_name }}-$(date +'%Y%m%d-%H%M')-IST"
+          TAG="${{ inputs.device_name}}-$(date +'%Y-%m-%d_%H-%M')-IST"
           echo "Generated Tag: $TAG"
           echo "tag=$TAG" >> $GITHUB_ENV
 
-      # ==> THIS IS THE FINAL, CORRECTED SCRIPT <==
-      - name: Create Release and Upload Assets
+      # Step 1: Download all artifacts from the specified build run.
+      # The action will place each artifact in a subdirectory named after it.
+      - name: Download All Build Artifacts
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: build-kernel.yml # IMPORTANT: Ensure this matches your build workflow's filename
+          run_id: ${{ inputs.run_id }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          path: ./downloaded-artifacts
+
+      - name: Display Downloaded Artifact Structure
+        run: ls -R ./downloaded-artifacts
+
+      # Step 2: Loop through each artifact's directory and create a zip file from its contents.
+      - name: Zip Each Artifact Individually
+        run: |
+          mkdir ./final-zips
+          for dir in ./downloaded-artifacts/*; do
+            if [ -d "$dir" ]; then
+              ARTIFACT_NAME=$(basename "$dir")
+              echo "Zipping artifact: $ARTIFACT_NAME"
+              # Go into the directory, create a zip file in the parent 'final-zips' folder
+              (cd "$dir" && zip -r9 "$GITHUB_WORKSPACE/final-zips/${ARTIFACT_NAME}.zip" .)
+            fi
+          done
+
+      - name: Display Final Zip Files
+        run: ls -l ./final-zips
+
+      # Step 3: Create the GitHub release and upload all the newly created zip files.
+      - name: Create GitHub Release and Upload Zips
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_NOTES: |
             ### SukiSU Ultra Kernel for ${{ inputs.device_name }}
-
+            Flash the appropriate zip file below using a custom recovery.
+            
             **Flasher Recommendation:**
             -> [Kernel Flasher](https://github.com/fatalcoder524/KernelFlasher)
 
             **Manager App:**
             -> [SukiSU-Ultra Manager](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/latest)
         run: |
-          # 1. Create the release first
+          # The wildcard finds all .zip files in the 'final-zips' directory
           gh release create "${{ env.tag }}" \
             --title "Kernel Release for ${{ inputs.device_name }} - $(date +'%d %B %Y, %I:%M %p IST')" \
-            --notes "$RELEASE_NOTES"
-
-          # 2. Prepare a list of all files, creating a guaranteed unique name for each one
-          UPLOAD_ARGS=()
-          while IFS= read -r file; do
-              # Get the path of the file relative to the 'release-artifacts' directory
-              # e.g., AnyKernel3_.../tools/busybox
-              relative_path=$(echo "$file" | sed 's|^\./release-artifacts/||')
-              
-              # Replace all slashes with hyphens to create a unique filename
-              # e.g., AnyKernel3_...-tools-busybox
-              remote_name=$(echo "$relative_path" | tr '/' '-')
-              
-              UPLOAD_ARGS+=("$file#${remote_name}")
-          done < <(find ./release-artifacts -type f)
-
-          # 3. Upload all the prepared assets
-          if [ ${#UPLOAD_ARGS[@]} -eq 0 ]; then
-            echo "No files found in artifacts to upload."
-          else
-            echo "Uploading the following assets:"
-            printf " - %s\n" "${UPLOAD_ARGS[@]}"
-            gh release upload "${{ env.tag }}" "${UPLOAD_ARGS[@]}"
-          fi
+            --notes "$RELEASE_NOTES" \
+            ./final-zips/*.zip
