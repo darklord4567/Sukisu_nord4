@@ -855,3 +855,54 @@ jobs:
 
       - name: Post-build Disk Check
         run: df -h
+
+  create_release:
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.create_release == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TZ: Asia/Kolkata
+      RELEASE_NOTES: |
+        ### SukiSU Ultra Kernel for ${{ github.event.inputs.FILE }}
+        This release contains SukiSU supported Kernel for OnePlus Nord 4
+
+        **Flasher Recommendation:**
+        -> [Kernel Flasher](https://github.com/fatalcoder524/KernelFlasher)
+
+        **Required Modules:**
+        -> [Susfs Module](https://github.com/sidex15/susfs4ksu-module)
+
+        **Manager App:**
+        -> [SukiSU-Ultra Manager](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/latest)
+
+        ---
+        **Features Included:**
+        - KernelSU Integration
+        - SUSFS v1.5.9
+        - TCP BBR Congestion Control
+        - Mountify Support
+        - ZRAM algorithms (Works Only if Module Flashed)
+
+    steps:
+      - name: Download All Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./release-artifacts
+
+      - name: Generate IST Release Tag
+        id: generate_tag
+        run: |
+          TAG="${{ github.event.inputs.FILE }}-$(date +'%Y%m%d-%H%M')-IST"
+          echo "Generated Tag: $TAG"
+          echo "tag=$TAG" >> $GITHUB_ENV
+
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ env.tag }}" \
+            --title "Kernel Release for ${{ github.event.inputs.FILE }} - $(date +'%d %B %Y, %I:%M %p IST')" \
+            --notes "$RELEASE_NOTES" \
+            $(find ./release-artifacts -type f)
