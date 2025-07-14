@@ -22,9 +22,11 @@ jobs:
       actions: read
     env:
       TZ: Asia/Kolkata
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Make token available to all steps
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
     
       - name: Extract Run ID from URL
         run: |
@@ -36,44 +38,38 @@ jobs:
         run: |
           TAG="${{ inputs.device_name}}-$(date +'%Y-%m-%d_%H-%M')-IST"
           echo "Generated Tag: $TAG"
+          # ==> FIX: This sets the variable 'tag', which we will use below
           echo "tag=$TAG" >> $GITHUB_ENV
 
-      - name: Download Artifacts
-        uses: actions/download-artifact@v4
+      # ==> FIX: Using the correct action to download from a *different* workflow run
+      - name: Download Build Artifacts
+        uses: dawidd6/action-download-artifact@v6
         with:
-          run_id: ${{ inputs.run_id }}
+          workflow: build-kernel.yml # The filename of your build workflow
+          # ==> FIX: Using the 'RUN_ID' variable extracted from the URL
+          run_id: ${{ env.RUN_ID }}
           path: ./downloaded-artifacts
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
+      # ==> FIX: Corrected 'tag_name' and 'body' formatting
       - name: Create GitHub Release
         uses: actions/create-release@v1
         with:
-          tag_name: ${{ env.NEW_TAG }}
-          prerelease: false
-          release_name: "Kernel Release for ${{ inputs.device_name }} - $(date +'%d %B %Y, %I:%M %p IST')" 
-          body: SukiSU Ultra Kernel for ${{ inputs.device_name }}
+          tag_name: ${{ env.tag }}
+          release_name: "Kernel Release for ${{ inputs.device_name }} - $(date +'%d %B %Y, %I:%M %p IST')"
+          body: |
+            ### SukiSU Ultra Kernel for ${{ inputs.device_name }}
 
             **Flasher Recommendation:**
             -> [Kernel Flasher](https://github.com/fatalcoder524/KernelFlasher)
 
             **Manager App:**
             -> [SukiSU-Ultra Manager](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/latest)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Release Assets Dynamically
+      # ==> FIX: Using the correct tag variable and a better loop
+      - name: Upload Release Assets
         run: |
-          for file in ./downloaded-artifacts/Susfs-Kernel_*/*; do
-              if [ -d "$file" ]; then
-                  continue
-              fi
-              echo "Uploading $file..."
-              gh release upload ${{ env.NEW_TAG }} "$file"
+          find ./downloaded-artifacts -type f | while read -r file; do
+            echo "Uploading $file..."
+            gh release upload "${{ env.tag }}" "$file"
           done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NEW_TAG: ${{ env.NEW_TAG }}
-
-      - name: Display Files Uploaded
-        run: |
-          echo "GitHub release created with the following files:"
-          ls ./downloaded-artifacts/**/*
