@@ -5,8 +5,9 @@ name: Create Kernel Release
 on:
   workflow_dispatch:
     inputs:
-      run_id:
-        description: 'The ID of the successful build run to release from'
+      # This input now accepts the full URL
+      run_url:
+        description: 'Paste the full URL of the successful build run'
         required: true
       device_name:
         description: 'Device name for the release (e.g., oneplus_nord_4_v)'
@@ -27,26 +28,26 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Generate IST Release Tag
+      # ==> NEW STEP: Extracts the ID from the URL <==
+      - name: Extract Run ID from URL
         run: |
-          TAG="${{ inputs.device_name}}-$(date +'%Y-%m-%d_%H-%M')-IST"
-          echo "Generated Tag: $TAG"
-          echo "tag=$TAG" >> $GITHUB_ENV
+          # Takes the last part of the URL, which is the Run ID
+          RUN_ID=$(basename "${{ inputs.run_url }}")
+          echo "Extracted Run ID: $RUN_ID"
+          echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
 
-      # Step 1: Download all artifacts from the specified build run.
-      # The action will place each artifact in a subdirectory named after it.
+      # This step now uses the extracted ID
       - name: Download All Build Artifacts
         uses: dawidd6/action-download-artifact@v6
         with:
-          workflow: build-kernel.yml # IMPORTANT: Ensure this matches your build workflow's filename
-          run_id: ${{ inputs.run_id }}
+          workflow: build-kernel.yml
+          run_id: ${{ env.RUN_ID }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           path: ./downloaded-artifacts
 
       - name: Display Downloaded Artifact Structure
         run: ls -R ./downloaded-artifacts
 
-      # Step 2: Loop through each artifact's directory and create a zip file from its contents.
       - name: Zip Each Artifact Individually
         run: |
           mkdir ./final-zips
@@ -54,7 +55,6 @@ jobs:
             if [ -d "$dir" ]; then
               ARTIFACT_NAME=$(basename "$dir")
               echo "Zipping artifact: $ARTIFACT_NAME"
-              # Go into the directory, create a zip file in the parent 'final-zips' folder
               (cd "$dir" && zip -r9 "$GITHUB_WORKSPACE/final-zips/${ARTIFACT_NAME}.zip" .)
             fi
           done
@@ -62,7 +62,12 @@ jobs:
       - name: Display Final Zip Files
         run: ls -l ./final-zips
 
-      # Step 3: Create the GitHub release and upload all the newly created zip files.
+      - name: Generate IST Release Tag
+        run: |
+          TAG="${{ inputs.device_name}}-$(date +'%Y-%m-%d_%H-%M')-IST"
+          echo "Generated Tag: $TAG"
+          echo "tag=$TAG" >> $GITHUB_ENV
+      
       - name: Create GitHub Release and Upload Zips
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -76,7 +81,6 @@ jobs:
             **Manager App:**
             -> [SukiSU-Ultra Manager](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/latest)
         run: |
-          # The wildcard finds all .zip files in the 'final-zips' directory
           gh release create "${{ env.tag }}" \
             --title "Kernel Release for ${{ inputs.device_name }} - $(date +'%d %B %Y, %I:%M %p IST')" \
             --notes "$RELEASE_NOTES" \
