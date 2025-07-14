@@ -44,7 +44,7 @@ jobs:
           echo "Generated Tag: $TAG"
           echo "tag=$TAG" >> $GITHUB_ENV
 
-      # ==> REPLACE THE OLD STEP WITH THIS CORRECTED VERSION <==
+      # ==> THIS IS THE FINAL, CORRECTED SCRIPT <==
       - name: Create Release and Upload Assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -57,22 +57,26 @@ jobs:
             **Manager App:**
             -> [SukiSU-Ultra Manager](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/latest)
         run: |
-          # 1. Create the release first without any assets
+          # 1. Create the release first
           gh release create "${{ env.tag }}" \
             --title "Kernel Release for ${{ inputs.device_name }} - $(date +'%d %B %Y, %I:%M %p IST')" \
             --notes "$RELEASE_NOTES"
 
-          # 2. Prepare a list of all files to upload, renaming them on the fly
-          # This corrected loop ensures the file list is not lost
+          # 2. Prepare a list of all files, creating a guaranteed unique name for each one
           UPLOAD_ARGS=()
           while IFS= read -r file; do
-              dir=$(dirname "$file")
-              prefix=$(basename "$dir")
-              filename=$(basename "$file")
-              UPLOAD_ARGS+=("$file#${prefix}-${filename}")
+              # Get the path of the file relative to the 'release-artifacts' directory
+              # e.g., AnyKernel3_.../tools/busybox
+              relative_path=$(echo "$file" | sed 's|^\./release-artifacts/||')
+              
+              # Replace all slashes with hyphens to create a unique filename
+              # e.g., AnyKernel3_...-tools-busybox
+              remote_name=$(echo "$relative_path" | tr '/' '-')
+              
+              UPLOAD_ARGS+=("$file#${remote_name}")
           done < <(find ./release-artifacts -type f)
 
-          # 3. Upload all the prepared assets to the release
+          # 3. Upload all the prepared assets
           if [ ${#UPLOAD_ARGS[@]} -eq 0 ]; then
             echo "No files found in artifacts to upload."
           else
