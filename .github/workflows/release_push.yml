@@ -40,49 +40,42 @@ jobs:
           echo "Generated Tag: $TAG"
           echo "tag=$TAG" >> $GITHUB_ENV
 
-      # ==> This new step downloads the artifacts directly as zip files <==
-      - name: Download Artifact Zips Directly via API
-        run: |
-          mkdir ./final-zips
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          run_id: ${{ inputs.run_id }}
+          path: ./downloaded-artifacts
 
-          # Get the name and download URL for each artifact in the specified run
-          ARTIFACTS_DATA=$(gh api "repos/${{ github.repository }}/actions/runs/${{ env.RUN_ID }}/artifacts" --jq '.artifacts')
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ env.NEW_TAG }}
+          prerelease: false
+          release_name: "Kernel Release for ${{ inputs.device_name }} - $(date +'%d %B %Y, %I:%M %p IST')" 
+          body: SukiSU Ultra Kernel for ${{ inputs.device_name }}
 
-          # Check if any artifacts were found
-          if [ "$(echo "$ARTIFACTS_DATA" | jq 'length')" -eq 0 ]; then
-            echo "::error::No artifacts found for Run ID ${{ env.RUN_ID }}"
-            exit 1
-          fi
-          
-          echo "Found artifacts to download:"
-          echo "$ARTIFACTS_DATA" | jq -r '.[].name'
-
-          # Loop through each artifact, download it, and save it with a .zip extension
-          echo "$ARTIFACTS_DATA" | jq -c '.[]' | while read -r artifact_json; do
-            ARTIFACT_NAME=$(echo "$artifact_json" | jq -r '.name')
-            DOWNLOAD_URL=$(echo "$artifact_json" | jq -r '.archive_download_url')
-            
-            echo "--- Downloading ${ARTIFACT_NAME}.zip ---"
-            curl -L -H "Authorization: Bearer $GITHUB_TOKEN" -o "./final-zips/${ARTIFACT_NAME}.zip" "$DOWNLOAD_URL"
-          done
-
-      - name: Display Final Zip Files
-        run: ls -l ./final-zips
-
-      - name: Create GitHub Release and Upload Zips
-        env:
-          RELEASE_NOTES: |
-            ### SukiSU Ultra Kernel for ${{ inputs.device_name }}
-            Flash the appropriate zip file below using a custom recovery.
-            
             **Flasher Recommendation:**
             -> [Kernel Flasher](https://github.com/fatalcoder524/KernelFlasher)
 
             **Manager App:**
             -> [SukiSU-Ultra Manager](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/latest)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Release Assets Dynamically
         run: |
-          # The wildcard finds all .zip files in the 'final-zips' directory
-          gh release create "${{ env.tag }}" \
-            --title "Kernel Release for ${{ inputs.device_name }} - $(date +'%d %B %Y, %I:%M %p IST')" \
-            --notes "$RELEASE_NOTES" \
-            ./final-zips/*.zip
+          for file in ./downloaded-artifacts/Susfs-Kernel_*/*; do
+              if [ -d "$file" ]; then
+                  continue
+              fi
+              echo "Uploading $file..."
+              gh release upload ${{ env.NEW_TAG }} "$file"
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_TAG: ${{ env.NEW_TAG }}
+
+      - name: Display Files Uploaded
+        run: |
+          echo "GitHub release created with the following files:"
+          ls ./downloaded-artifacts/**/*
