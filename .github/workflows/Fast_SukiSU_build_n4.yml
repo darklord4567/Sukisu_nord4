@@ -56,7 +56,11 @@ on:
         description: "Add more ZRAM algorithms?"
         required: true
         default: false
-
+      Create_release:
+        type: boolean
+        description: "Create a GitHub Release with the build artifacts?"
+        required: true
+        default: false
 jobs:
   build:
     name: ${{ github.event.inputs.FAST_BUILD == 'true' && ' [FAST]' || '' }}${{ github.event.inputs.SCHED == 'true' && ' [SCHED]' || '' }}${{ github.event.inputs.ZRAM == 'true' && ' [ZRAM]' || '' }}For ${{ github.event.inputs.FILE }} ${{ github.event.inputs.SUFFIX }}
