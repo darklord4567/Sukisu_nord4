@@ -1,3 +1,5 @@
+# .github/workflows/release-kernel.yml
+
 name: Create Kernel Release
 
 on:
@@ -25,11 +27,9 @@ jobs:
       - name: Download Build Artifacts
         uses: dawidd6/action-download-artifact@v6
         with:
-          # The name of the build workflow file
-          workflow: Fast_SukiSU_build_n4.yml
+          workflow: build-kernel.yml
           run_id: ${{ inputs.run_id }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # The action will download all artifacts from that run
           path: ./release-artifacts
 
       - name: Display Downloaded Files
@@ -46,7 +46,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_NOTES: |
             ### SukiSU Ultra Kernel for ${{ inputs.device_name }}
-            This release was generated on **${{ fromJson(steps.get_time.outputs.json).date }}**.
 
             **Flasher Recommendation:**
             -> [Kernel Flasher](https://github.com/fatalcoder524/KernelFlasher)
