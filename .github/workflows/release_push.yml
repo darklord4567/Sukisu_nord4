@@ -1,3 +1,5 @@
+# .github/workflows/release-kernel.yml
+
 name: Create Kernel Release
 
 on:
@@ -20,6 +22,8 @@ jobs:
       actions: read
     env:
       TZ: Asia/Kolkata
+      # Set the token once for all steps in the job
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Checkout Repository
@@ -31,10 +35,7 @@ jobs:
           echo "Generated Tag: $TAG"
           echo "tag=$TAG" >> $GITHUB_ENV
 
-      # ==> This step has been replaced with the official GitHub CLI <==
       - name: Download Artifacts via GitHub CLI
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Downloading artifacts for Run ID ${{ inputs.run_id }}..."
           gh run download ${{ inputs.run_id }} --dir ./downloaded-artifacts --repo ${{ github.repository }}
@@ -58,10 +59,17 @@ jobs:
 
       - name: Create GitHub Release and Upload Zips
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_NOTES: |
             ### SukiSU Ultra Kernel for ${{ inputs.device_name }}
             Flash the appropriate zip file below using a custom recovery.
             
             **Flasher Recommendation:**
-            -> [Kernel Flasher](
+            -> [Kernel Flasher](https://github.com/fatalcoder524/KernelFlasher)
+            
+            **Manager App:**
+            -> [SukiSU-Ultra Manager](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/latest)
+        run: |
+          gh release create "${{ env.tag }}" \
+            --title "Kernel Release for ${{ inputs.device_name }} - $(date +'%d %B %Y, %I:%M %p IST')" \
+            --notes "$RELEASE_NOTES" \
+            ./final-zips/*.zip
