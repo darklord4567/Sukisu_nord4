@@ -25,9 +25,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Make token available to all steps
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
+    
       - name: Extract Run ID from URL
         run: |
           RUN_ID=$(basename "${{ inputs.run_url }}")
