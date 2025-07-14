@@ -22,6 +22,7 @@ jobs:
       actions: read
     env:
       TZ: Asia/Kolkata
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Make token available to all steps
 
     steps:
       - name: Checkout Repository
@@ -39,39 +40,37 @@ jobs:
           echo "Generated Tag: $TAG"
           echo "tag=$TAG" >> $GITHUB_ENV
 
-      # Step 1: Download all artifacts from the specified build run.
-      # The action will place each artifact in a subdirectory named after it.
-      - name: Download All Build Artifacts
-        uses: dawidd6/action-download-artifact@v6
-        with:
-          workflow: build-kernel.yml # IMPORTANT: Ensure this matches your build workflow's filename
-          run_id: ${{ env.RUN_ID }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          path: ./downloaded-artifacts
-
-      - name: Display Downloaded Artifact Structure
-        run: ls -R ./downloaded-artifacts
-
-      # Step 2: Loop through each artifact's directory and create a zip file from its contents.
-      - name: Zip Each Artifact Individually
+      # ==> This new step downloads the artifacts directly as zip files <==
+      - name: Download Artifact Zips Directly via API
         run: |
           mkdir ./final-zips
-          for dir in ./downloaded-artifacts/*; do
-            if [ -d "$dir" ]; then
-              ARTIFACT_NAME=$(basename "$dir")
-              echo "Zipping artifact: $ARTIFACT_NAME"
-              # Go into the directory, create a zip file in the parent 'final-zips' folder
-              (cd "$dir" && zip -r9 "$GITHUB_WORKSPACE/final-zips/${ARTIFACT_NAME}.zip" .)
-            fi
+
+          # Get the name and download URL for each artifact in the specified run
+          ARTIFACTS_DATA=$(gh api "repos/${{ github.repository }}/actions/runs/${{ env.RUN_ID }}/artifacts" --jq '.artifacts')
+
+          # Check if any artifacts were found
+          if [ "$(echo "$ARTIFACTS_DATA" | jq 'length')" -eq 0 ]; then
+            echo "::error::No artifacts found for Run ID ${{ env.RUN_ID }}"
+            exit 1
+          fi
+          
+          echo "Found artifacts to download:"
+          echo "$ARTIFACTS_DATA" | jq -r '.[].name'
+
+          # Loop through each artifact, download it, and save it with a .zip extension
+          echo "$ARTIFACTS_DATA" | jq -c '.[]' | while read -r artifact_json; do
+            ARTIFACT_NAME=$(echo "$artifact_json" | jq -r '.name')
+            DOWNLOAD_URL=$(echo "$artifact_json" | jq -r '.archive_download_url')
+            
+            echo "--- Downloading ${ARTIFACT_NAME}.zip ---"
+            curl -L -H "Authorization: Bearer $GITHUB_TOKEN" -o "./final-zips/${ARTIFACT_NAME}.zip" "$DOWNLOAD_URL"
           done
 
       - name: Display Final Zip Files
         run: ls -l ./final-zips
 
-      # Step 3: Create the GitHub release and upload all the newly created zip files.
       - name: Create GitHub Release and Upload Zips
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_NOTES: |
             ### SukiSU Ultra Kernel for ${{ inputs.device_name }}
             Flash the appropriate zip file below using a custom recovery.
