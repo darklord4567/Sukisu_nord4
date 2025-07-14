@@ -27,49 +27,55 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-    
+
       - name: Extract Run ID from URL
         run: |
           RUN_ID=$(basename "${{ inputs.run_url }}")
           echo "Extracted Run ID: $RUN_ID"
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
 
+      # ==> REPLACED the download action with this more direct CLI command <==
+      - name: Download Artifacts via GitHub CLI
+        run: |
+          echo "Downloading artifacts for Run ID ${{ env.RUN_ID }}..."
+          gh run download ${{ env.RUN_ID }} --dir ./downloaded-artifacts --repo ${{ github.repository }}
+
+      - name: Display Downloaded Artifact Structure
+        run: ls -R ./downloaded-artifacts
+
+      - name: Zip Each Artifact Individually
+        run: |
+          mkdir ./final-zips
+          for dir in ./downloaded-artifacts/*; do
+            if [ -d "$dir" ]; then
+              ARTIFACT_NAME=$(basename "$dir")
+              echo "Zipping artifact: $ARTIFACT_NAME"
+              (cd "$dir" && zip -r9 "$GITHUB_WORKSPACE/final-zips/${ARTIFACT_NAME}.zip" .)
+            fi
+          done
+
+      - name: Display Final Zip Files
+        run: ls -l ./final-zips
+      
       - name: Generate IST Release Tag
         run: |
           TAG="${{ inputs.device_name}}-$(date +'%Y-%m-%d_%H-%M')-IST"
           echo "Generated Tag: $TAG"
-          # ==> FIX: This sets the variable 'tag', which we will use below
           echo "tag=$TAG" >> $GITHUB_ENV
 
-      # ==> FIX: Using the correct action to download from a *different* workflow run
-      - name: Download Build Artifacts
-        uses: dawidd6/action-download-artifact@v6
-        with:
-          workflow: build-kernel.yml # The filename of your build workflow
-          # ==> FIX: Using the 'RUN_ID' variable extracted from the URL
-          run_id: ${{ env.RUN_ID }}
-          path: ./downloaded-artifacts
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-      # ==> FIX: Corrected 'tag_name' and 'body' formatting
-      - name: Create GitHub Release
-        uses: actions/create-release@v1
-        with:
-          tag_name: ${{ env.tag }}
-          release_name: "Kernel Release for ${{ inputs.device_name }} - $(date +'%d %B %Y, %I:%M %p IST')"
-          body: |
+      - name: Create GitHub Release and Upload Zips
+        env:
+          RELEASE_NOTES: |
             ### SukiSU Ultra Kernel for ${{ inputs.device_name }}
-
+            Flash the appropriate zip file below using a custom recovery.
+            
             **Flasher Recommendation:**
             -> [Kernel Flasher](https://github.com/fatalcoder524/KernelFlasher)
 
             **Manager App:**
             -> [SukiSU-Ultra Manager](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/latest)
-
-      # ==> FIX: Using the correct tag variable and a better loop
-      - name: Upload Release Assets
         run: |
-          find ./downloaded-artifacts -type f | while read -r file; do
-            echo "Uploading $file..."
-            gh release upload "${{ env.tag }}" "$file"
-          done
+          gh release create "${{ env.tag }}" \
+            --title "Kernel Release for ${{ inputs.device_name }} - $(date +'%d %B %Y, %I:%M %p IST')" \
+            --notes "$RELEASE_NOTES" \
+            ./final-zips/*.zip
