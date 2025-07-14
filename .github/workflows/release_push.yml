@@ -24,7 +24,6 @@ jobs:
       TZ: Asia/Kolkata
 
     steps:
-      # ==> ADD THIS STEP TO CHECKOUT YOUR REPOSITORY CODE <==
       - name: Checkout Repository
         uses: actions/checkout@v4
 
@@ -45,7 +44,8 @@ jobs:
           echo "Generated Tag: $TAG"
           echo "tag=$TAG" >> $GITHUB_ENV
 
-      - name: Create GitHub Release
+      # ==> THIS STEP IS REPLACED WITH A SMARTER SCRIPT <==
+      - name: Create Release and Upload Assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_NOTES: |
@@ -56,9 +56,30 @@ jobs:
 
             **Manager App:**
             -> [SukiSU-Ultra Manager](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/latest)
-
         run: |
+          # 1. Create the release first without any assets
           gh release create "${{ env.tag }}" \
             --title "Kernel Release for ${{ inputs.device_name }} - $(date +'%d %B %Y, %I:%M %p IST')" \
-            --notes "$RELEASE_NOTES" \
-            $(find ./release-artifacts -type f)
+            --notes "$RELEASE_NOTES"
+
+          # 2. Prepare a list of all files to upload, renaming them on the fly
+          # The format is 'local/path/to/file#Desired-Release-Name.ext'
+          UPLOAD_ARGS=()
+          for dir in ./release-artifacts/*; do
+            if [ -d "$dir" ]; then
+              prefix=$(basename "$dir")
+              find "$dir" -type f | while read -r file; do
+                filename=$(basename "$file")
+                UPLOAD_ARGS+=("$file#${prefix}-${filename}")
+              done
+            fi
+          done
+
+          # 3. Upload all the prepared assets to the release
+          if [ ${#UPLOAD_ARGS[@]} -eq 0 ]; then
+            echo "No files found in artifacts to upload."
+          else
+            echo "Uploading the following assets:"
+            printf " - %s\n" "${UPLOAD_ARGS[@]}"
+            gh release upload "${{ env.tag }}" "${UPLOAD_ARGS[@]}"
+          fi
