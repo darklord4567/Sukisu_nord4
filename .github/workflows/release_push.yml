@@ -5,8 +5,8 @@ name: Create Kernel Release
 on:
   workflow_dispatch:
     inputs:
-      run_id:
-        description: 'The ID of the successful build run to release from'
+      run_url:
+        description: 'Paste the full URL of the successful build run'
         required: true
       device_name:
         description: 'Device name for the release (e.g., oneplus_nord_4_v)'
@@ -27,6 +27,12 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Extract Run ID from URL
+        run: |
+          RUN_ID=$(basename "${{ inputs.run_url }}")
+          echo "Extracted Run ID: $RUN_ID"
+          echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
+
       - name: Generate IST Release Tag
         run: |
           TAG="${{ inputs.device_name}}-$(date +'%Y-%m-%d_%H-%M')-IST"
@@ -39,7 +45,7 @@ jobs:
         uses: dawidd6/action-download-artifact@v6
         with:
           workflow: build-kernel.yml # IMPORTANT: Ensure this matches your build workflow's filename
-          run_id: ${{ inputs.run_id }}
+          run_id: ${{ env.RUN_ID }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           path: ./downloaded-artifacts
 
