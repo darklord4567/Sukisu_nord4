@@ -44,7 +44,7 @@ jobs:
           echo "Generated Tag: $TAG"
           echo "tag=$TAG" >> $GITHUB_ENV
 
-      # ==> THIS STEP IS REPLACED WITH A SMARTER SCRIPT <==
+      # ==> REPLACE THE OLD STEP WITH THIS CORRECTED VERSION <==
       - name: Create Release and Upload Assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -63,17 +63,14 @@ jobs:
             --notes "$RELEASE_NOTES"
 
           # 2. Prepare a list of all files to upload, renaming them on the fly
-          # The format is 'local/path/to/file#Desired-Release-Name.ext'
+          # This corrected loop ensures the file list is not lost
           UPLOAD_ARGS=()
-          for dir in ./release-artifacts/*; do
-            if [ -d "$dir" ]; then
+          while IFS= read -r file; do
+              dir=$(dirname "$file")
               prefix=$(basename "$dir")
-              find "$dir" -type f | while read -r file; do
-                filename=$(basename "$file")
-                UPLOAD_ARGS+=("$file#${prefix}-${filename}")
-              done
-            fi
-          done
+              filename=$(basename "$file")
+              UPLOAD_ARGS+=("$file#${prefix}-${filename}")
+          done < <(find ./release-artifacts -type f)
 
           # 3. Upload all the prepared assets to the release
           if [ ${#UPLOAD_ARGS[@]} -eq 0 ]; then
