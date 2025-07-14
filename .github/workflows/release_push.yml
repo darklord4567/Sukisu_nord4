@@ -1,126 +1,70 @@
-name: Release to Repo with BBR
+# .github/workflows/release-kernel.yml
 
-permissions:
-  contents: write
-  actions: write
+name: Create Kernel Release
 
 on:
   workflow_dispatch:
     inputs:
-      make_release:
-        description: 'Do you want to create a release?'
+      run_id:
+        description: 'The ID of the successful build run to release from'
         required: true
-        type: boolean
-        default: false
-      ksun_branch:
-        description: "Choose KernelSU Next Branch"
+      device_name:
+        description: 'Device name for the release (e.g., oneplus_nord_4_v)'
         required: true
-        type: choice
-        options:
-          - stable
-          - next
-        default: next
+        default: 'oneplus_nord_4_v'
 
 jobs:
-  build-batch-1: 
-    strategy:
-      fail-fast: false
-      matrix:
-        include:          
-          - model: OP-NORD4
-            soc: pineapple
-            branch: oneplus/sm7675
-            manifest: oneplus_nord_4_v.xml
-            android_version: android14
-            kernel_version: "6.1"
-    uses: ./.github/workflows/rkg.yml
-    secrets: inherit
-    with:
-      model: ${{ matrix.model }}
-      soc: ${{ matrix.soc }}
-      branch: ${{ matrix.branch }}
-      manifest: ${{ matrix.manifest }}
-      android_version: ${{ matrix.android_version }}
-      kernel_version: ${{ matrix.kernel_version }}
-      ksun_branch: ${{ inputs.ksun_branch }}
-
-  trigger-release:
-    needs:
-      - build-batch-1      
+  release:
+    name: Create Release
     runs-on: ubuntu-latest
-    if: ${{ inputs.make_release }}
+    permissions:
+      contents: write # To create tags and releases
+      actions: read   # To download artifacts from other workflows
     env:
       TZ: Asia/Kolkata
-      REPO_OWNER: CodeWithRKG
-      REPO_NAME: Susfs_Nord4_Latest
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      RELEASE_NAME: "*Susfs Patched Kernels With KernelSU Next and BBR*"
-      RELEASE_NOTES: |
-        This release contains KernelSU Next and SUSFS v1.5.9
-
-        Kernel Flasher: 
-        -> https://github.com/fatalcoder524/KernelFlasher
-
-        Susfs for KernelSU Module: 
-        -> https://github.com/sidex15/ksu_module_susfs
-
-        Mountify for KernelSU Module: 
-        -> https://github.com/backslashxx/mountify
-
-        KernelSU Next Manager:
-        -> https://github.com/KernelSU-Next/KernelSU-Next
-
-        Features:
-        [+] KernelSU-Next
-        [+] SUSFS 1.5.9
-        [+] BBR
-        [+] Mountify Support
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Generate and Create New Tag
-        run: |
-            LATEST_TAG=$(gh api repos/$REPO_OWNER/$REPO_NAME/tags --jq '.[0].name')
-            if [ -z "$LATEST_TAG" ]; then
-              LATEST_TAG="v1.5.9-r0"
-            fi
-            NEW_TAG=$(echo "$LATEST_TAG" | awk -F'-r' '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%s-r%d", $1, suffix}')
-            echo "New tag: $NEW_TAG"
-            echo "NEW_TAG=${NEW_TAG}" >> $GITHUB_ENV
-            git tag $NEW_TAG
-            git push origin $NEW_TAG
-
-      - name: Download Artifacts
-        uses: actions/download-artifact@v4
+      - name: Download Artifacts from Build Workflow
+        uses: dawidd6/action-download-artifact@v6
         with:
-          path: ./downloaded-artifacts
+          # The name of the build workflow file
+          workflow: build-kernel.yml
+          # The specific run ID you provided as input
+          run_id: ${{ inputs.run_id }}
+          # The token is required to access artifacts from other workflow runs
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Download all artifacts from that run
+          # They will be placed in directories named after the artifact
+          path: ./release-artifacts
+      
+      - name: Display Downloaded Files
+        run: ls -R ./release-artifacts
+
+      - name: Generate IST Release Tag
+        run: |
+          TAG="${{ inputs.device_name }}-$(date +'%Y%m%d-%H%M')-IST"
+          echo "Generated Tag: $TAG"
+          echo "tag=$TAG" >> $GITHUB_ENV
 
       - name: Create GitHub Release
-        uses: actions/create-release@v1
-        with:
-          tag_name: ${{ env.NEW_TAG }}
-          prerelease: false
-          release_name: ${{ env.RELEASE_NAME }}
-          body: ${{ env.RELEASE_NOTES }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_NOTES: |
+            ### SukiSU Ultra Kernel for ${{ inputs.device_name }}
+            This release contains SukiSU supported Kernel for OnePlus Nord 4.
 
-      - name: Upload Release Assets Dynamically
-        run: |
-          for file in ./downloaded-artifacts/Susfs-Kernel_*/*; do
-              if [ -d "$file" ]; then
-                  continue
-              fi
-              echo "Uploading $file..."
-              gh release upload ${{ env.NEW_TAG }} "$file"
-          done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NEW_TAG: ${{ env.NEW_TAG }}
+            **Flasher Recommendation:**
+            -> [Kernel Flasher](https://github.com/fatalcoder524/KernelFlasher)
 
-      - name: Display Files Uploaded
+            **Required Modules:**
+            -> [Susfs Module](https://github.com/sidex15/susfs4ksu-module)
+
+            **Manager App:**
+            -> [SukiSU-Ultra Manager](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/latest)
+
         run: |
-          echo "GitHub release created with the following files:"
-          ls ./downloaded-artifacts/**/*
+          # Use find to locate all files within the downloaded artifact directories
+          gh release create "${{ env.tag }}" \
+            --title "Kernel Release for ${{ inputs.device_name }} - $(date +'%d %B %Y, %I:%M %p IST')" \
+            --notes "$RELEASE_NOTES" \
+            $(find ./release-artifacts -type f)
