@@ -1,5 +1,3 @@
-# .github/workflows/release-kernel.yml
-
 name: Create Kernel Release
 
 on:
@@ -18,25 +16,22 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     permissions:
-      contents: write # To create tags and releases
-      actions: read   # To download artifacts from other workflows
+      contents: write
+      actions: read
     env:
       TZ: Asia/Kolkata
 
     steps:
-      - name: Download Artifacts from Build Workflow
+      - name: Download Build Artifacts
         uses: dawidd6/action-download-artifact@v6
         with:
           # The name of the build workflow file
-          workflow: build-kernel.yml
-          # The specific run ID you provided as input
+          workflow: Fast_SukiSU_build_n4.yml
           run_id: ${{ inputs.run_id }}
-          # The token is required to access artifacts from other workflow runs
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # Download all artifacts from that run
-          # They will be placed in directories named after the artifact
+          # The action will download all artifacts from that run
           path: ./release-artifacts
-      
+
       - name: Display Downloaded Files
         run: ls -R ./release-artifacts
 
@@ -51,19 +46,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_NOTES: |
             ### SukiSU Ultra Kernel for ${{ inputs.device_name }}
-            This release contains SukiSU supported Kernel for OnePlus Nord 4.
+            This release was generated on **${{ fromJson(steps.get_time.outputs.json).date }}**.
 
             **Flasher Recommendation:**
             -> [Kernel Flasher](https://github.com/fatalcoder524/KernelFlasher)
-
-            **Required Modules:**
-            -> [Susfs Module](https://github.com/sidex15/susfs4ksu-module)
 
             **Manager App:**
             -> [SukiSU-Ultra Manager](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/latest)
 
         run: |
-          # Use find to locate all files within the downloaded artifact directories
+          # The find command reliably uploads all files from all downloaded artifact folders
           gh release create "${{ env.tag }}" \
             --title "Kernel Release for ${{ inputs.device_name }} - $(date +'%d %B %Y, %I:%M %p IST')" \
             --notes "$RELEASE_NOTES" \
