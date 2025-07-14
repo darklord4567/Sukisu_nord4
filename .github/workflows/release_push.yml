@@ -24,6 +24,10 @@ jobs:
       TZ: Asia/Kolkata
 
     steps:
+      # ==> ADD THIS STEP TO CHECKOUT YOUR REPOSITORY CODE <==
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
       - name: Download Build Artifacts
         uses: dawidd6/action-download-artifact@v6
         with:
@@ -54,7 +58,6 @@ jobs:
             -> [SukiSU-Ultra Manager](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/latest)
 
         run: |
-          # The find command reliably uploads all files from all downloaded artifact folders
           gh release create "${{ env.tag }}" \
             --title "Kernel Release for ${{ inputs.device_name }} - $(date +'%d %B %Y, %I:%M %p IST')" \
             --notes "$RELEASE_NOTES" \
