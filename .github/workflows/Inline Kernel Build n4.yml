@@ -24,7 +24,7 @@ jobs:
       - name: Init Repo & Add Local Manifest (Prebuilts Only)
         run: |
           mkdir kernel_workspace && cd kernel_workspace
-          repo init -u https://github.com/darklord4567/Sukisu_nord4 -m default.mxl --depth=1
+          repo init -u https://github.com/darklord4567/Sukisu_nord4 -m default.xml --depth=1
 
 
       - name: Sync AOSP Prebuilts
