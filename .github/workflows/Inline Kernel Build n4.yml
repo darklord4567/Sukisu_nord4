@@ -24,15 +24,18 @@ jobs:
       - name: Init Repo & Add Local Manifest (Prebuilts + Kernel Only)
         run: |
           mkdir kernel_workspace && cd kernel_workspace
-          repo init -u https://android.googlesource.com/kernel/manifest -b master-kernel-build-2021 --depth=1
 
+          # Init repo with correct AOSP kernel manifest branch
+          repo init -u https://android.googlesource.com/kernel/manifest -b common-android14-6.1 --depth=1
+
+          # Add your local manifest to override/add projects
           mkdir -p .repo/local_manifests
           cat <<EOF > .repo/local_manifests/local_manifest.xml
           <?xml version="1.0" encoding="UTF-8"?>
           <manifest>
             <remote name="aosp" fetch="https://android.googlesource.com" />
             <remote name="github" fetch="https://github.com/OnePlusOSS" />
-            <default revision="master-kernel-build-2021" remote="aosp" sync-j="4" />
+            <default revision="common-android14-6.1" remote="aosp" sync-j="4" />
             <project path="build" name="kernel/build" />
             <project path="kernel/tests" name="kernel/tests" />
             <project path="kernel/configs" name="kernel/configs" />
@@ -46,6 +49,7 @@ jobs:
 
           echo "===== Local Manifest ====="
           cat .repo/local_manifests/local_manifest.xml
+
 
       - name: Sync Prebuilts & Kernel Source
         run: |
