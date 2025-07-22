@@ -36,7 +36,7 @@ jobs:
         run: |
           cd kernel_workspace
           git clone https://github.com/stuffbykoko/kernel_oneplus_sm8650.git -b lineage-22.2 kernel_src
-
+      
       - name: Build Kernel (Image.gz Only)
         run: |
           cd kernel_workspace/kernel_src
@@ -45,12 +45,13 @@ jobs:
           export CROSS_COMPILE=aarch64-linux-gnu-
           export LOCALVERSION="-custom"
           export CLANG_PATH=$GITHUB_WORKSPACE/kernel_workspace/prebuilts-master/clang/host/linux-x86/clang-r487747c/bin
-          export GCC_PATH=$GITHUB_WORKSPACE/kernel_workspace/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/aarch64-linux-gnu/bin
+          export GCC_PATH=$GITHUB_WORKSPACE/kernel_workspace/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-gnu/bin
           export PATH=$CLANG_PATH:$GCC_PATH:/usr/lib/ccache:$PATH
           export CC="ccache clang"
       
           make O=out gki_defconfig
           make O=out -j$(nproc --all) Image.gz
+
 
 
       - name: Upload Built Image.gz
