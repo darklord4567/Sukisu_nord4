@@ -21,7 +21,7 @@ jobs:
           chmod a+x ~/repo
           sudo mv ~/repo /usr/local/bin/repo
 
-      - name: Init Repo & Add Local Manifest (AOSP Prebuilts Only)
+      - name: Init Repo & Add Local Manifest (Prebuilts Only)
         run: |
           mkdir kernel_workspace && cd kernel_workspace
           repo init -u https://android.googlesource.com/kernel/manifest -b common-android14-6.1 --depth=1
@@ -30,7 +30,6 @@ jobs:
           cat <<EOF > .repo/local_manifests/local_manifest.xml
           <?xml version="1.0" encoding="UTF-8"?>
           <manifest>
-            <default revision="common-android14-6.1" remote="aosp" sync-j="4" />
             <project path="build" name="kernel/build" />
             <project path="kernel/tests" name="kernel/tests" />
             <project path="kernel/configs" name="kernel/configs" />
@@ -40,6 +39,10 @@ jobs:
             <project path="prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8" name="platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8" clone-depth="1" />
           </manifest>
           EOF
+
+          echo "===== Local Manifest ====="
+          cat .repo/local_manifests/local_manifest.xml
+
 
       - name: Sync AOSP Prebuilts
         run: |
