@@ -29,7 +29,7 @@ jobs:
           cat <<EOF > .repo/local_manifests/inline_kernel.xml
           <?xml version="1.0" encoding="UTF-8"?>
           <manifest>
-            <remote fetch="https://github.com/stuffbykoko" name="origin"/>
+            <remote fetch="https://github.com/stuffbykoko" name="github" />
             <project name="device_oneplus_sm7675-common" path="device/oneplus/sm7675-common" remote="github" revision="lineage-22.2" />
             <project name="device_oneplus_avalon-prebuilt" path="device/oneplus/avalon-prebuilt" remote="github" revision="lineage-22.2" />
             <project name="kernel_oneplus_sm8650" path="kernel/oneplus/sm8650" remote="github" revision="lineage-22.2" />
@@ -38,9 +38,12 @@ jobs:
           </manifest>
           EOF
 
-      - name: manifest check 
-        run: |
+          
+          echo "===== Local Manifest Content ====="
           cat .repo/local_manifests/inline_kernel.xml
+          echo "=================================="
+
+
 
       - name: Sync Sources
         run: |
