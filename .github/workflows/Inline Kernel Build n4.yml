@@ -30,9 +30,6 @@ jobs:
           cat <<EOF > .repo/local_manifests/local_manifest.xml
           <?xml version="1.0" encoding="UTF-8"?>
           <manifest>
-            <project path="build" name="kernel/build" />
-            <project path="kernel/tests" name="kernel/tests" />
-            <project path="kernel/configs" name="kernel/configs" />
             <project path="prebuilts/build-tools" name="platform/prebuilts/build-tools" clone-depth="1" />
             <project path="prebuilts/kernel-build-tools" name="kernel/prebuilts/build-tools" clone-depth="1" />
             <project path="prebuilts-master/clang/host/linux-x86" name="platform/prebuilts/clang/host/linux-x86" clone-depth="1" />
