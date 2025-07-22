@@ -24,7 +24,7 @@ jobs:
       - name: Init Repo & Add Local Manifest (Prebuilts Only)
         run: |
           mkdir kernel_workspace && cd kernel_workspace
-          repo init -u https://github.com/darklord4567/Sukisu_nord4 -m default.xml --depth=1
+          repo init -u https://github.com/darklord4567/Sukisu_nord4 -m default.mxl --depth=1
 
 
       - name: Sync AOSP Prebuilts
@@ -37,27 +37,53 @@ jobs:
           cd kernel_workspace
           git clone https://github.com/stuffbykoko/kernel_oneplus_sm8650.git -b lineage-22.2 kernel_src
       
-
-      - name: Build Kernel Image.gz
+      - name: Build Kernel (Prebuilts + Clang + GCC + FAST Mode)
         run: |
           cd kernel_workspace/kernel_src
-      
-          # Environment setup
-          export ARCH=arm64
-          export SUBARCH=arm64
-          export CROSS_COMPILE=aarch64-linux-gnu-
-          export LOCALVERSION="-custom"
-      
-          # Toolchains from synced prebuilts
-          export CLANG_PATH=$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r487747c/bin
-          export GCC_PATH=$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-gnu/bin
-          export PATH=$CLANG_PATH:$GCC_PATH:/usr/lib/ccache:$PATH
-          export CC="ccache clang"
-      
-          # Build
-          make O=out gki_defconfig
-          make O=out -j$(nproc --all) Image.gz
 
+          # Kernel Version Select (You can pass this as env or set manually)
+          KERNEL_VERSION="6.1"
+
+          if [[ "$KERNEL_VERSION" == "6.6" ]]; then
+            CLANG_PATH="clang-r510928"
+            CLANG_DIR="kernel_platform/prebuilts"
+          elif [[ "$KERNEL_VERSION" == "6.1" ]]; then
+            CLANG_PATH="clang-r487747c"
+            CLANG_DIR="kernel_platform/prebuilts"
+          elif [[ "$KERNEL_VERSION" == "5.15" ]]; then
+            CLANG_PATH="clang-r450784e"
+            CLANG_DIR="kernel_platform/prebuilts"
+          elif [[ "$KERNEL_VERSION" == "5.10" ]]; then
+            CLANG_PATH="clang-r416183b"
+            CLANG_DIR="kernel_platform/prebuilts-master"
+            USE_LLVM_IAS=true
+          else
+            echo "❌ Unsupported Kernel Version: $KERNEL_VERSION"
+            exit 1
+          fi
+
+          # Export Toolchains
+          export CLANG_FULL_PATH=$GITHUB_WORKSPACE/kernel_workspace/$CLANG_DIR/clang/host/linux-x86/$CLANG_PATH/bin
+          # export GCC_FULL_PATH=$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-gnu/bin
+          export PATH=$CLANG_FULL_PATH:$GCC_FULL_PATH:/usr/lib/ccache:$PATH
+          export CC="ccache clang"
+
+          sudo apt-get update
+          sudo apt-get install -y libelf-dev ccache
+
+          # Build Arguments
+          MAKE_ARGS="LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
+            RUSTC=../../kernel_platform/prebuilts/rust/linux-x86/1.73.0b/bin/rustc \
+            PAHOLE=../../kernel_platform/prebuilts/kernel-build-tools/linux-x86/bin/pahole \
+            LD=ld.lld HOSTLD=ld.lld KCFLAGS+=-Wno-error"
+
+          if [[ "$USE_LLVM_IAS" == "true" ]]; then
+            MAKE_ARGS="LLVM_IAS=1 $MAKE_ARGS"
+          fi
+
+          echo "🌟 Starting Kernel Build with $CLANG_PATH"
+          make -j$(nproc --all) O=out $MAKE_ARGS gki_defconfig
+          make -j$(nproc --all) O=out $MAKE_ARGS Image.gz
 
 
       - name: Upload Built Image.gz
