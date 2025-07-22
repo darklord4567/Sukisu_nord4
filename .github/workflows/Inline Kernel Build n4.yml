@@ -38,6 +38,10 @@ jobs:
           </manifest>
           EOF
 
+      - name: manifest check 
+        run: |
+          cat .repo/local_manifests/inline_kernel.xml
+
       - name: Sync Sources
         run: |
           cd rom
