@@ -1,19 +1,19 @@
-name: Inline Kernel Build (PixelExperience 14)
+name: GKI Kernel Image.gz Only Build (With Prebuilts Manifest)
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc bison build-essential curl flex git \
-            libssl-dev python3 rsync unzip xz-utils zlib1g-dev ccache \
-            libncurses5-dev libelf-dev lz4 device-tree-compiler repo
+          sudo apt-get install -y bc bison build-essential ccache flex \
+            git libssl-dev python3 rsync unzip zip zlib1g-dev \
+            libncurses5-dev libelf-dev lz4 device-tree-compiler curl
 
       - name: Install Repo Tool
         run: |
@@ -21,57 +21,55 @@ jobs:
           chmod a+x ~/repo
           sudo mv ~/repo /usr/local/bin/repo
 
-      - name: Init Repo & Local Manifest
+      - name: Init Repo & Add Local Manifest (Prebuilts + Kernel Only)
         run: |
-          mkdir rom && cd rom
-          repo init -u https://github.com/PixelExperience/manifest.git -b fourteen --depth=1
+          mkdir kernel_workspace && cd kernel_workspace
+          repo init -u https://android.googlesource.com/kernel/manifest -b master-kernel-build-2021 --depth=1
+
           mkdir -p .repo/local_manifests
-          cat <<EOF > .repo/local_manifests/inline_kernel.xml
+          cat <<EOF > .repo/local_manifests/local_manifest.xml
           <?xml version="1.0" encoding="UTF-8"?>
           <manifest>
-            <remote fetch="https://github.com/stuffbykoko" name="origin" />
-            <project name="device_oneplus_sm7675-common" path="device/oneplus/sm7675-common" remote="origin" revision="lineage-22.2" />
-            <project name="device_oneplus_avalon-prebuilt" path="device/oneplus/avalon-prebuilt" remote="origin" revision="fifteen" />
-            <project name="kernel_oneplus_sm8650" path="kernel/oneplus/sm8650" remote="origin" revision="lineage-22.2" />
-            <project name="kernel_oneplus_sm7675-devicetrees" path="device/oneplus/avalon" remote="origin" revision="lineage-22.2" />
-            <project name="kernel_oneplus_sm8650-modules" path="kernel/oneplus/sm8650-modules" remote="origin" revision="lineage-22.2" />
+            <remote name="aosp" fetch="https://android.googlesource.com" />
+            <remote name="github" fetch="https://github.com/OnePlusOSS" />
+            <default revision="master-kernel-build-2021" remote="aosp" sync-j="4" />
+            <project path="build" name="kernel/build" />
+            <project path="kernel/tests" name="kernel/tests" />
+            <project path="kernel/configs" name="kernel/configs" />
+            <project path="prebuilts/build-tools" name="platform/prebuilts/build-tools" clone-depth="1" />
+            <project path="prebuilts/kernel-build-tools" name="kernel/prebuilts/build-tools" clone-depth="1" />
+            <project path="prebuilts-master/clang/host/linux-x86" name="platform/prebuilts/clang/host/linux-x86" clone-depth="1" />
+            <project path="prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8" name="platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8" clone-depth="1" />
+            <project path="kernel-5.10" name="android_kernel_5.10_oneplus_mt6983" remote="github" revision="oneplus/mt6983_v_15.0.0_nord_3" clone-depth="1" />
           </manifest>
           EOF
 
+          echo "===== Local Manifest ====="
+          cat .repo/local_manifests/local_manifest.xml
+
+      - name: Sync Prebuilts & Kernel Source
+        run: |
+          cd kernel_workspace
           
-          echo "===== Local Manifest Content ====="
-          cat .repo/local_manifests/inline_kernel.xml
-          echo "=================================="
+          echo "===== SYNCING ====="
+          repo sync -c --no-tags --no-clone-bundle --force-sync -j$(nproc --all)
 
-
-
-      - name: Sync Sources with Live Updates
+      - name: Build Kernel (Image.gz Only)
         run: |
-          cd rom
-          echo "=============================="
-          echo "🚀 Starting Repo Sync Process"
-          echo "=============================="
-          repo sync -c --no-clone-bundle --no-tags --force-sync -j$(nproc --all) --verbose
-          echo "=============================="
-          echo "✅ Repo Sync Completed"
-          echo "=============================="
+          cd kernel_workspace/kernel-5.10
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export LOCALVERSION="-custom"
+          export PATH=$GITHUB_WORKSPACE/kernel_workspace/prebuilts-master/clang/host/linux-x86/clang-r416183b/bin:$PATH
+          export PATH="/usr/lib/ccache:$PATH"
+          export CC="ccache clang"
 
+          make O=out gki_defconfig
+          make O=out -j$(nproc --all) Image.gz
 
-      - name: Build Kernel Inline
-        run: |
-          cd rom
-          source build/envsetup.sh
-          lunch aosp_avalon-userdebug
-          mka kernelimage
-
-      - name: Upload Kernel Image.gz
+      - name: Upload Built Image.gz
         uses: actions/upload-artifact@v4
         with:
-          name: Image.gz
-          path: rom/out/target/product/avalon/obj/KERNEL_OBJ/arch/arm64/boot/Image.gz
-
-      - name: Upload Image (Optional)
-        uses: actions/upload-artifact@v4
-        with:
-          name: Image
-          path: rom/out/target/product/avalon/obj/KERNEL_OBJ/arch/arm64/boot/Image
+          name: Built-Image.gz
+          path: kernel_workspace/kernel-5.10/out/arch/arm64/boot/Image.gz
