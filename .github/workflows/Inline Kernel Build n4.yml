@@ -45,18 +45,16 @@ jobs:
 
 
 
-      - name: Sync Sources with Progress
+      - name: Sync Sources with Live Updates
         run: |
           cd rom
           echo "=============================="
           echo "🚀 Starting Repo Sync Process"
           echo "=============================="
-          repo sync -c --no-clone-bundle --no-tags --force-sync -j$(nproc --all) --verbose 2>&1 | tee sync.log
+          repo sync -c --no-clone-bundle --no-tags --force-sync -j$(nproc --all) --verbose
           echo "=============================="
           echo "✅ Repo Sync Completed"
           echo "=============================="
-          echo "📄 Last 50 lines of sync.log:"
-          tail -n 50 sync.log
 
 
       - name: Build Kernel Inline
