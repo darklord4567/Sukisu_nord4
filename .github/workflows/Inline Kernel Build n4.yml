@@ -15,6 +15,12 @@ jobs:
             libssl-dev python3 rsync unzip xz-utils zlib1g-dev ccache \
             libncurses5-dev libelf-dev lz4 device-tree-compiler repo
 
+      - name: Install Repo Tool
+        run: |
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
+          chmod a+x ~/repo
+          sudo mv ~/repo /usr/local/bin/repo
+
       - name: Init Repo & Local Manifest
         run: |
           mkdir rom && cd rom
@@ -24,11 +30,11 @@ jobs:
           <?xml version="1.0" encoding="UTF-8"?>
           <manifest>
             <remote fetch="https://github.com/stuffbykoko" name="origin"/>
-            <project name="stuffbykoko/device_oneplus_sm7675-common" path="device/oneplus/sm7675-common" remote="github" revision="main" />
-            <project name="stuffbykoko/device_oneplus_avalon-prebuilt" path="device/oneplus/avalon-prebuilt" remote="github" revision="main" />
-            <project name="stuffbykoko/kernel_oneplus_sm8650" path="kernel/oneplus/sm8650" remote="github" revision="main" />
-            <project name="stuffbykoko/kernel_oneplus_sm7675-devicetrees" path="device/oneplus/avalon" remote="github" revision="main" />
-            <project name="stuffbykoko/kernel_oneplus_sm8650-modules" path="kernel/oneplus/sm8650-modules" remote="github" revision="main" />
+            <project name="device_oneplus_sm7675-common" path="device/oneplus/sm7675-common" remote="github" revision="lineage-22.2" />
+            <project name="device_oneplus_avalon-prebuilt" path="device/oneplus/avalon-prebuilt" remote="github" revision="lineage-22.2" />
+            <project name="kernel_oneplus_sm8650" path="kernel/oneplus/sm8650" remote="github" revision="lineage-22.2" />
+            <project name="kernel_oneplus_sm7675-devicetrees" path="device/oneplus/avalon" remote="github" revision="lineage-22.2" />
+            <project name="kernel_oneplus_sm8650-modules" path="kernel/oneplus/sm8650-modules" remote="github" revision="lineage-22.2" />
           </manifest>
           EOF
 
