@@ -1,0 +1,57 @@
+name: Inline Kernel Build (PixelExperience 14)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential curl flex git \
+            libssl-dev python3 rsync unzip xz-utils zlib1g-dev ccache \
+            libncurses5-dev libelf-dev lz4 device-tree-compiler repo
+
+      - name: Init Repo & Local Manifest
+        run: |
+          mkdir rom && cd rom
+          repo init -u https://github.com/PixelExperience/manifest.git -b fourteen --depth=1
+          mkdir -p .repo/local_manifests
+          cat <<EOF > .repo/local_manifests/inline_kernel.xml
+          <?xml version="1.0" encoding="UTF-8"?>
+          <manifest>
+            <remote fetch="https://github.com/stuffbykoko" name="origin"/>
+            <project name="stuffbykoko/device_oneplus_sm7675-common" path="device/oneplus/sm7675-common" remote="github" revision="main" />
+            <project name="stuffbykoko/device_oneplus_avalon-prebuilt" path="device/oneplus/avalon-prebuilt" remote="github" revision="main" />
+            <project name="stuffbykoko/kernel_oneplus_sm8650" path="kernel/oneplus/sm8650" remote="github" revision="main" />
+            <project name="stuffbykoko/kernel_oneplus_sm7675-devicetrees" path="device/oneplus/avalon" remote="github" revision="main" />
+            <project name="stuffbykoko/kernel_oneplus_sm8650-modules" path="kernel/oneplus/sm8650-modules" remote="github" revision="main" />
+          </manifest>
+          EOF
+
+      - name: Sync Sources
+        run: |
+          cd rom
+          repo sync -c --no-clone-bundle --no-tags --force-sync -j$(nproc --all)
+
+      - name: Build Kernel Inline
+        run: |
+          cd rom
+          source build/envsetup.sh
+          lunch aosp_avalon-userdebug
+          mka kernelimage
+
+      - name: Upload Kernel Image.gz
+        uses: actions/upload-artifact@v4
+        with:
+          name: Image.gz
+          path: rom/out/target/product/avalon/obj/KERNEL_OBJ/arch/arm64/boot/Image.gz
+
+      - name: Upload Image (Optional)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Image
+          path: rom/out/target/product/avalon/obj/KERNEL_OBJ/arch/arm64/boot/Image
