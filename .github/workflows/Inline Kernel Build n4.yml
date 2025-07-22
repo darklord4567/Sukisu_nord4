@@ -24,7 +24,7 @@ jobs:
       - name: Init Repo & Add Local Manifest (Prebuilts Only)
         run: |
           mkdir kernel_workspace && cd kernel_workspace
-          repo init -u https://github.com/darklord4567/Sukisu_nord4 -m default.mxl --depth=1
+          repo init -u https://github.com/darklord4567/Sukisu_nord4 -m default.xml --depth=1
 
 
       - name: Sync AOSP Prebuilts
@@ -37,18 +37,24 @@ jobs:
           cd kernel_workspace
           git clone https://github.com/stuffbykoko/kernel_oneplus_sm8650.git -b lineage-22.2 kernel_src
       
-      - name: Build Kernel (Image.gz Only)
+
+      - name: Build Kernel Image.gz
         run: |
           cd kernel_workspace/kernel_src
+      
+          # Environment setup
           export ARCH=arm64
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           export LOCALVERSION="-custom"
-          export CLANG_PATH=$GITHUB_WORKSPACE/kernel_workspace/prebuilts-master/clang/host/linux-x86/clang-r487747c/bin
-          export GCC_PATH=$GITHUB_WORKSPACE/kernel_workspace/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-gnu/bin
+      
+          # Toolchains from synced prebuilts
+          export CLANG_PATH=$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r487747c/bin
+          export GCC_PATH=$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-gnu/bin
           export PATH=$CLANG_PATH:$GCC_PATH:/usr/lib/ccache:$PATH
           export CC="ccache clang"
       
+          # Build
           make O=out gki_defconfig
           make O=out -j$(nproc --all) Image.gz
 
