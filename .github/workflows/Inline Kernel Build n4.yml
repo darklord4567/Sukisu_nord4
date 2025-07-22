@@ -1,4 +1,4 @@
-name: GKI Kernel Image.gz Only Build (With Prebuilts Manifest)
+name: Kernel Image.gz Only Build (With kernel_src)
 
 on:
   workflow_dispatch:
@@ -21,20 +21,15 @@ jobs:
           chmod a+x ~/repo
           sudo mv ~/repo /usr/local/bin/repo
 
-      - name: Init Repo & Add Local Manifest (Prebuilts + Kernel Only)
+      - name: Init Repo & Add Local Manifest (AOSP Prebuilts Only)
         run: |
           mkdir kernel_workspace && cd kernel_workspace
-
-          # Init repo with correct AOSP kernel manifest branch
           repo init -u https://android.googlesource.com/kernel/manifest -b common-android14-6.1 --depth=1
-
-          # Add your local manifest to override/add projects
+          
           mkdir -p .repo/local_manifests
           cat <<EOF > .repo/local_manifests/local_manifest.xml
           <?xml version="1.0" encoding="UTF-8"?>
           <manifest>
-            <remote name="aosp" fetch="https://android.googlesource.com" />
-            <remote name="github" fetch="https://github.com/OnePlusOSS" />
             <default revision="common-android14-6.1" remote="aosp" sync-j="4" />
             <project path="build" name="kernel/build" />
             <project path="kernel/tests" name="kernel/tests" />
@@ -43,29 +38,27 @@ jobs:
             <project path="prebuilts/kernel-build-tools" name="kernel/prebuilts/build-tools" clone-depth="1" />
             <project path="prebuilts-master/clang/host/linux-x86" name="platform/prebuilts/clang/host/linux-x86" clone-depth="1" />
             <project path="prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8" name="platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8" clone-depth="1" />
-            <project path="kernel-5.10" name="android_kernel_5.10_oneplus_mt6983" remote="github" revision="oneplus/mt6983_v_15.0.0_nord_3" clone-depth="1" />
           </manifest>
           EOF
 
-          echo "===== Local Manifest ====="
-          cat .repo/local_manifests/local_manifest.xml
-
-
-      - name: Sync Prebuilts & Kernel Source
+      - name: Sync AOSP Prebuilts
         run: |
           cd kernel_workspace
-          
-          echo "===== SYNCING ====="
           repo sync -c --no-tags --no-clone-bundle --force-sync -j$(nproc --all)
+
+      - name: Clone OnePlus Kernel Source (to kernel_src)
+        run: |
+          cd kernel_workspace
+          git clone https://github.com/stuffbykoko/kernel_oneplus_sm8650.git -b lineage-22.2 kernel_src
 
       - name: Build Kernel (Image.gz Only)
         run: |
-          cd kernel_workspace/kernel-5.10
+          cd kernel_workspace/kernel_src
           export ARCH=arm64
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           export LOCALVERSION="-custom"
-          export PATH=$GITHUB_WORKSPACE/kernel_workspace/prebuilts-master/clang/host/linux-x86/clang-r416183b/bin:$PATH
+          export PATH=$GITHUB_WORKSPACE/kernel_workspace/prebuilts-master/clang/host/linux-x86/clang-r487747c/bin:$PATH
           export PATH="/usr/lib/ccache:$PATH"
           export CC="ccache clang"
 
@@ -76,4 +69,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Built-Image.gz
-          path: kernel_workspace/kernel-5.10/out/arch/arm64/boot/Image.gz
+          path: kernel_workspace/kernel_src/out/arch/arm64/boot/Image.gz
