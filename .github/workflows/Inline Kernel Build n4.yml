@@ -44,12 +44,14 @@ jobs:
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           export LOCALVERSION="-custom"
-          export PATH=$GITHUB_WORKSPACE/kernel_workspace/prebuilts-master/clang/host/linux-x86/clang-r487747c/bin:$PATH
-          export PATH="/usr/lib/ccache:$PATH"
+          export CLANG_PATH=$GITHUB_WORKSPACE/kernel_workspace/prebuilts-master/clang/host/linux-x86/clang-r487747c/bin
+          export GCC_PATH=$GITHUB_WORKSPACE/kernel_workspace/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/aarch64-linux-gnu/bin
+          export PATH=$CLANG_PATH:$GCC_PATH:/usr/lib/ccache:$PATH
           export CC="ccache clang"
-
+      
           make O=out gki_defconfig
           make O=out -j$(nproc --all) Image.gz
+
 
       - name: Upload Built Image.gz
         uses: actions/upload-artifact@v4
