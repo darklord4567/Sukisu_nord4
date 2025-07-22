@@ -31,7 +31,7 @@ jobs:
           <manifest>
             <remote fetch="https://github.com/stuffbykoko" name="origin" />
             <project name="device_oneplus_sm7675-common" path="device/oneplus/sm7675-common" remote="origin" revision="lineage-22.2" />
-            <project name="device_oneplus_avalon-prebuilt" path="device/oneplus/avalon-prebuilt" remote="origin" revision="lineage-22.2" />
+            <project name="device_oneplus_avalon-prebuilt" path="device/oneplus/avalon-prebuilt" remote="origin" revision="fifteen" />
             <project name="kernel_oneplus_sm8650" path="kernel/oneplus/sm8650" remote="origin" revision="lineage-22.2" />
             <project name="kernel_oneplus_sm7675-devicetrees" path="device/oneplus/avalon" remote="origin" revision="lineage-22.2" />
             <project name="kernel_oneplus_sm8650-modules" path="kernel/oneplus/sm8650-modules" remote="origin" revision="lineage-22.2" />
